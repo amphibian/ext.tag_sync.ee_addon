@@ -9,7 +9,7 @@ class Tag_sync
 {
 	var $settings        = array();
 	var $name            = 'Tag Synchronizer';
-	var $version         = '1.0.1';
+	var $version         = '1.0.2';
 	var $description     = 'Synchronize Solspace Tag tags to a custom field when entries are publish or updated, or all at once.';
 	var $settings_exist  = 'y';
 	var $docs_url        = 'http://github.com/amphibian/ext.tag_sync.ee_addon';
@@ -43,7 +43,7 @@ class Tag_sync
 			$current_batch = (isset($_GET['batch'])) ? $_GET['batch'] : 1;
 			
 			// Get batch of entry IDs
-			$sql = "SELECT entry_id FROM exp_weblog_titles WHERE weblog_id = ".$DB->escape_str($sync_weblog)." ORDER BY entry_id ASC";
+			$sql = "SELECT DISTINCT w.entry_id FROM exp_weblog_titles as w, exp_tag_entries as t WHERE w.weblog_id = ".$DB->escape_str($sync_weblog)." AND w.entry_id = t.entry_id ORDER BY entry_id ASC";
 			$entries = $DB->query($sql);
 			
 			if($entries->num_rows > 0)
@@ -58,7 +58,7 @@ class Tag_sync
 				$entry_ids = implode(',', array_slice($entry_ids, $offset, $this->batch_size));
 			
 				// Get an array of tags using this batch's entry ids
-				$sql = "SELECT DISTINCT (t.tag_name), e.entry_id FROM exp_tag_entries AS e LEFT JOIN exp_tag_tags AS t ON e.tag_id = t.tag_id WHERE e.entry_id IN($entry_ids) ORDER BY e.entry_id ASC";
+				$sql = "SELECT DISTINCT t.tag_name, e.entry_id FROM exp_tag_entries AS e LEFT JOIN exp_tag_tags AS t ON e.tag_id = t.tag_id WHERE e.entry_id IN($entry_ids) ORDER BY e.entry_id ASC";
 				$get_tags = $DB->query($sql);
 					
 				if($get_tags->num_rows > 0)
@@ -258,10 +258,15 @@ class Tag_sync
 						$tags[] = $tag['tag_name'];
 					}
 
-					// Build and run our update statement
+					// Update the field with our list of tags
 					$sql = "UPDATE exp_weblog_data SET $custom_field = '".str_replace(array("'","\""), "", implode(',', $tags))."' WHERE entry_id = $entry_id";
-					$DB->query($sql);		
 				}
+				else
+				{
+					// We don't have any tags, or just removed them all, so zero out the field
+					$sql = "UPDATE exp_weblog_data SET $custom_field = '' WHERE entry_id = $entry_id";
+				}
+				$DB->query($sql);		
 			}
 		}	
 	}  
