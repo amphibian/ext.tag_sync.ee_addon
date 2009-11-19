@@ -7,5 +7,10 @@ $L = array(
 	'synchronized_tags' => 'Synchronized tags to field in',
 	'entry' => 'entry',
 	'entries' => 'entries',
-	'nothing_to_sync' => 'Tags and field are already in sync!'
+	'synced_in_batch' => 'synced in this batch.',
+	'run_batch' => 'Sync batch',
+	'of' => 'of',	
+	'nothing_to_sync' => 'Nothing to sync in this batch.',
+	'no_entries' => 'No entries to sync.',
+	'sync_complete' => 'Synchronization complete!'
 );
