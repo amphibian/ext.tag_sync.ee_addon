@@ -9,7 +9,7 @@ class Tag_sync
 {
 	var $settings        = array();
 	var $name            = 'Tag Synchronizer';
-	var $version         = '1.0.2';
+	var $version         = '1.0.4';
 	var $description     = 'Synchronize Solspace Tag tags to a custom field when entries are publish or updated, or all at once.';
 	var $settings_exist  = 'y';
 	var $docs_url        = 'http://github.com/amphibian/ext.tag_sync.ee_addon';
@@ -34,7 +34,7 @@ class Tag_sync
 	function settings_form($current)
 	{
 		global $DB, $DSP, $IN, $LANG, $PREFS;
-
+		
 		// Synchronize all tags to a specific weblog's custom field
 		if(isset($_GET['sync_weblog']) && !empty($current['weblog_id_'.$_GET['sync_weblog']]))
 		{
@@ -42,27 +42,33 @@ class Tag_sync
 			$custom_field = $current['weblog_id_'.$sync_weblog];
 			$current_batch = (isset($_GET['batch'])) ? $_GET['batch'] : 1;
 			
-			// Get batch of entry IDs
-			$sql = "SELECT DISTINCT w.entry_id FROM exp_weblog_titles as w, exp_tag_entries as t WHERE w.weblog_id = ".$DB->escape_str($sync_weblog)." AND w.entry_id = t.entry_id ORDER BY entry_id ASC";
-			$entries = $DB->query($sql);
+			// Get count of entry IDs in this weblog which have tags
+			$sql = "SELECT COUNT(DISTINCT entry_id) as count FROM exp_tag_entries WHERE weblog_id = ".$DB->escape_str($sync_weblog);
+			$count = $DB->query($sql);
 			
-			if($entries->num_rows > 0)
+			if($count->row['count'] > 0)
 			{
-				$batches = ceil($entries->num_rows / $this->batch_size);
+				$batches = ceil($count->row['count'] / $this->batch_size);
 				$offset = ($current_batch - 1) * $this->batch_size;
+				
+				// Get the current batch of tagged entries to sync
+				$sql = "SELECT DISTINCT entry_id FROM exp_tag_entries WHERE weblog_id = ".$DB->escape_str($sync_weblog)." ORDER BY entry_id ASC LIMIT $offset, ".$this->batch_size;
+				$entries = $DB->query($sql);
 				$entry_ids = array();
-				foreach($entries->result as $entry)
-				{
-					$entry_ids[] = $entry['entry_id'];
+				foreach($entries->result as $result)
+				{	
+					$entry_ids[] = $result['entry_id'];
 				}
-				$entry_ids = implode(',', array_slice($entry_ids, $offset, $this->batch_size));
-			
-				// Get an array of tags using this batch's entry ids
+				$entry_ids = implode(',', $entry_ids);
+				
+				// Get all tags for this batch's entry_ids
 				$sql = "SELECT DISTINCT t.tag_name, e.entry_id FROM exp_tag_entries AS e LEFT JOIN exp_tag_tags AS t ON e.tag_id = t.tag_id WHERE e.entry_id IN($entry_ids) ORDER BY e.entry_id ASC";
 				$get_tags = $DB->query($sql);
 					
 				if($get_tags->num_rows > 0)
 				{
+					// Create an array with each entry_id as a key,
+					// and an array of its tags as a value
 					$tags = array();
 					foreach($get_tags->result as $tag)
 					{
@@ -73,17 +79,19 @@ class Tag_sync
 					$sql = "UPDATE exp_weblog_data SET ".$DB->escape_str($custom_field)." = CASE entry_id ";
 					foreach($tags as $entry_id => $tag)
 					{
-						$sql .= "WHEN ".$entry_id." THEN '".str_replace(array("'","\""), "", implode(',', $tag))."' ";
+						$sql .= "WHEN ".$entry_id." THEN '".$DB->escape_str(implode(',', $tag))."' ";
 					}
-					$sql .= " END WHERE entry_id IN($entry_ids)";
+					$sql .= "END WHERE entry_id IN($entry_ids)";
 					$DB->query($sql);
 					
 					if($DB->affected_rows == 0)
 					{
+						// Everything was already in sync ('N Sync?)
 						$message = $DSP->qspan('text', $LANG->line('nothing_to_sync'));
 					}
 					else
 					{
+						// We had updates
 						$message = $DSP->span('text');
 						$message .= $DB->affected_rows.' ';
 						$message .= ($DB->affected_rows == 1) ? $LANG->line('entry') : $LANG->line('entries');
@@ -93,11 +101,14 @@ class Tag_sync
 				}
 				else
 				{
+					// None of the entries had tags - kinda redundant,
+					// as we were only selecting entries with tags, but still...
 					$message = $DSP->qspan('text', $LANG->line('nothing_to_sync'));					
 				}
 
 				if($current_batch < $batches)
 				{
+					// We have more batches to run
 					$message .= ' '.$DSP->anchor(
 						BASE.AMP.'C=admin'.
 						AMP.'M=utilities'.
@@ -105,19 +116,23 @@ class Tag_sync
 						AMP.'name=tag_sync'.
 						AMP.'sync_weblog='.$sync_weblog.
 						AMP.'batch='.($current_batch + 1), 
-						$LANG->line('run_batch').' '.($current_batch + 1).' '.$LANG->line('of').' '.$batches.'.'
+						$LANG->line('run_batch').' '.($current_batch + 1).' '.$LANG->line('of').' '.$batches.'.',
+						'class="bold"'
 					);
 				}
 				else
 				{
+					// We're all done!
 					$message .= $DSP->qspan('success', ' '.$LANG->line('sync_complete'));
 				}
 			}
 			else
 			{
-				$message = $DSP->qspan('text', $LANG-line('no_entries'));
+				// The weblog has no tagged entries
+				$message = $DSP->qspan('alert', $LANG->line('no_entries'));
 			}
 		}
+		// End synchronization routine
 		
 		// Start building the page
 		$DSP->crumbline = TRUE;
@@ -156,7 +171,7 @@ class Tag_sync
 
 		// Get a list of weblogs
 		$weblogs = array();
-		$query = $DB->query("SELECT blog_title, weblog_id FROM exp_weblogs ORDER BY blog_title ASC");
+		$query = $DB->query("SELECT blog_title, weblog_id FROM exp_weblogs WHERE site_id = '".$DB->escape_str($PREFS->ini('site_id'))."' ORDER BY blog_title ASC");
 		if($query->num_rows > 0) {
 			foreach($query->result as $value)
 			{
@@ -228,11 +243,39 @@ class Tag_sync
 	{
 		global $DB;
 		
+		// Get the current settings, as we don't want to
+		// overwrite other sites' settings
+		$settings = $this->get_settings();
+		
 		unset($_POST['name']);
-		$data = array('settings' => addslashes(serialize($_POST)));
+		
+		// Add to the existing settings array
+		foreach($_POST as  $weblog => $field)
+		{
+			$settings[$weblog] = $field;
+		}
+		
+		$data = array('settings' => addslashes(serialize($settings)));
 		$update = $DB->update_string('exp_extensions', $data, "class = 'Tag_sync'");
 		$DB->query($update);
 	}
+	
+	
+	function get_settings()
+	{
+		global $DB, $REGX;
+
+		$get_settings = $DB->query("SELECT settings FROM exp_extensions WHERE class = 'Tag_sync' LIMIT 1");
+		if ($get_settings->num_rows > 0 && $get_settings->row['settings'] != '')
+        {
+        	$settings = $REGX->array_stripslashes(unserialize($get_settings->row['settings']));
+        }
+        else
+        {
+        	$settings = array();
+        }
+        return $settings;		
+	}	
 		
 
 	function submit_new_entry_absolute_end($entry_id, $data)
@@ -247,7 +290,7 @@ class Tag_sync
         	{
 				$custom_field = $this->settings['weblog_id_'.$get_weblog->row['weblog_id']];
 				
-				$sql = "SELECT DISTINCT (t.tag_name) FROM exp_tag_entries AS e LEFT JOIN exp_tag_tags AS t ON e.tag_id = t.tag_id WHERE e.entry_id = ".$entry_id;
+				$sql = "SELECT DISTINCT t.tag_name FROM exp_tag_entries AS e LEFT JOIN exp_tag_tags AS t ON e.tag_id = t.tag_id WHERE e.entry_id = ".$entry_id;
 				$get_tags = $DB->query($sql);
 				
 				if($get_tags->num_rows > 0)
@@ -259,7 +302,7 @@ class Tag_sync
 					}
 
 					// Update the field with our list of tags
-					$sql = "UPDATE exp_weblog_data SET $custom_field = '".str_replace(array("'","\""), "", implode(',', $tags))."' WHERE entry_id = $entry_id";
+					$sql = "UPDATE exp_weblog_data SET $custom_field = '".$DB->escape_str(implode(',', $tags))."' WHERE entry_id = $entry_id";
 				}
 				else
 				{
