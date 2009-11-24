@@ -12,5 +12,6 @@ $L = array(
 	'of' => 'of',	
 	'nothing_to_sync' => 'Nothing to sync in this batch.',
 	'no_entries' => 'No entries to sync.',
-	'sync_complete' => 'Synchronization complete!'
+	'sync_complete' => 'Synchronization complete!',
+	'settings_saved' => "Settings Saved!",
 );
