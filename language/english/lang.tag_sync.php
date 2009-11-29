@@ -1,8 +1,7 @@
 <?php
 
 $L = array(
-	'sync_tags' => 'Synchronize tags in the',
-	'to_this_field' => 'to this field',
+	'tag_field' => 'Synchronize Tags to this field',
 	'sync_weblog' => 'Synchronize this',
 	'synchronized_tags' => 'Synchronized tags to field in',
 	'entry' => 'entry',

@@ -164,6 +164,8 @@ class Tag_sync
 			$DSP->body .= $DSP->qdiv('box', $message);
 		}
 		
+		$DSP->body .= $DSP->heading($this->name.NBS.$DSP->qspan('defaultLight', $this->version), 1);
+		
 		$DSP->body .= $DSP->form_open(
 			array(
 				'action' => 'C=admin'.AMP.'M=utilities'.AMP.'P=save_extension_settings',
@@ -176,8 +178,11 @@ class Tag_sync
 		// Open the table
 		$DSP->body .=   $DSP->table('tableBorder', '0', '', '100%');
 		$DSP->body .=   $DSP->tr();
-		$DSP->body .=   $DSP->td('tableHeadingAlt', '', '3');
-		$DSP->body .=   $this->name;
+		$DSP->body .=   $DSP->td('tableHeading');
+		$DSP->body .=   ucfirst($PREFS->ini('weblog_nomenclature'));
+		$DSP->body .=   $DSP->td_c();
+		$DSP->body .=   $DSP->td('tableHeading', '', 2);
+		$DSP->body .=   $LANG->line('tag_field');
 		$DSP->body .=   $DSP->td_c();
 		$DSP->body .=   $DSP->tr_c();	
 
@@ -203,7 +208,7 @@ class Tag_sync
 			// Create a settings row for the weblog			
 			$DSP->body .=   $DSP->tr();
 			$DSP->body .=   $DSP->td($row_class, '45%');
-			$DSP->body .=   $DSP->qdiv('defaultBold', $LANG->line('sync_tags').' '.strtoupper($blog_title).' '.$PREFS->core_ini['weblog_nomenclature'].' '.$LANG->line('to_this_field').':');
+			$DSP->body .=   $DSP->qdiv('defaultBold', $blog_title);
 			$DSP->body .=   $DSP->td_c();
 			
 			$DSP->body .=   $DSP->td($row_class);
