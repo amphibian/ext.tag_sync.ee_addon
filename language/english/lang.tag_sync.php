@@ -13,4 +13,6 @@ $L = array(
 	'no_entries' => 'No entries to sync.',
 	'sync_complete' => 'Synchronization complete!',
 	'settings_saved' => "Settings Saved!",
+	'important' => 'IMPORTANT!',
+	'warning' => 'Any existing data in your chosen synchronization fields will be lost.'
 );

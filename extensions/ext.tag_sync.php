@@ -184,7 +184,15 @@ class Tag_sync
 		$DSP->body .=   $DSP->td('tableHeading', '', 2);
 		$DSP->body .=   $LANG->line('tag_field');
 		$DSP->body .=   $DSP->td_c();
-		$DSP->body .=   $DSP->tr_c();	
+		$DSP->body .=   $DSP->tr_c();
+		
+		// Display fair warning
+		$DSP->body .=   $DSP->tr();
+		$DSP->body .=   '<td class="box" style="border-width: 0 0 1px; margin: 0;" colspan="3">';
+		$DSP->body .=   $DSP->qspan('highlight bold', $LANG->line('important')).' ';
+		$DSP->body .=   $DSP->qspan('default', $LANG->line('warning'));
+		$DSP->body .=   $DSP->td_c();		
+		$DSP->body .=   $DSP->tr_c();
 
 		// Get a list of weblogs
 		$query = $DB->query("SELECT blog_title, weblog_id FROM exp_weblogs WHERE site_id = '".$DB->escape_str($PREFS->ini('site_id'))."' ORDER BY blog_title ASC");
@@ -237,6 +245,10 @@ class Tag_sync
 					AMP.'sync_weblog='.$weblog_id, 
 					$LANG->line('sync_weblog').' '.$PREFS->core_ini['weblog_nomenclature']
 				);
+			}
+			else
+			{
+				$DSP->body .= NBS;
 			}
 			$DSP->body .=   $DSP->td_c();
 			$DSP->body .=   $DSP->tr_c();			
